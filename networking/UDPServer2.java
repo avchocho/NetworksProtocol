@@ -1,4 +1,4 @@
-package networking;
+package PeerToPeer;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
