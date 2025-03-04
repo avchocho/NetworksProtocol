@@ -22,7 +22,7 @@ public class Peer {
     // Sends an "I am alive" message to all known peers
     public void sendHeartbeat(List<String> peerIPs) throws IOException {
         long currentTime = System.currentTimeMillis();
-        Protocol msg = new Protocol(1, 1, nodeId, currentTime, 0, "Alive-Peer");
+        Protocol msg = new Protocol(1, true, nodeId, currentTime, 0, "Alive-Peer");
         byte[] data = msg.serialize();
 
         for (String peerIP : peerIPs) {
