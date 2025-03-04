@@ -22,7 +22,7 @@ public class Peer {
     // Sends an "I am alive" message to all known peers
     public void sendHeartbeat(List<String> peerIPs) throws IOException {
         long currentTime = System.currentTimeMillis();
-        Protocol msg = new Protocol(1, true, nodeId, currentTime, 0, "Alive-Peer");
+        Protocol msg = new Protocol(1, mode, nodeId, currentTime, 0, "Alive-Peer");
         byte[] data = msg.serialize();
 
         for (String peerIP : peerIPs) {
@@ -39,11 +39,18 @@ public class Peer {
 
         while (true) {
             socket.receive(packet);
-            Protocol msg = Protocol.deserialize(packet.getData());
+            try {
+                Protocol msg = Protocol.deserialize(packet.getData());
 
-            // Update peer status
-            activePeers.put(msg.getNodeId(), System.currentTimeMillis());
-            System.out.println("Received from Node " + msg.getNodeId() + ": " + msg.getPayload());
+                // Update peer status
+                activePeers.put(msg.getNodeId(), System.currentTimeMillis());
+                System.out.println("Received from Node " + msg.getNodeId() + ": " + msg.getPayload());
+
+            } catch (ClassNotFoundException e) {
+                e.printStackTrace(); // Handle the error appropriately
+            } catch (IOException e) {
+                e.printStackTrace(); // Handle I/O exceptions
+            }
         }
     }
 
