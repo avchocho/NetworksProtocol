@@ -11,19 +11,19 @@ import java.io.*;
 
 public class Protocol implements Serializable {
     private static final long serialVersionUID = 1L; //first version, long data type 
-    private static final int HEADER_SIZE = 25;
+    private static final int HEADER_SIZE = 30;
 
     private int version; 
     private int length; //length of payload
-    private int flag;   //status flags for message type (node alive, node dead, file update)
     private int nodeId;
+    private boolean mode; //true = P2P, false = client-server
     private long timestamp;
     private int reserve;
     private String payload;
     
-    public Protocol(int version, int flag, int nodeId, long timestamp, int reserve, String payload) {
+    public Protocol(int version, boolean mode, int nodeId, long timestamp, int reserve, String payload) {
         this.version = version; 
-        this.flag = flag;
+        this.mode = mode;
         this.nodeId = nodeId;
         this.timestamp = timestamp;
         this.reserve = reserve;
@@ -35,8 +35,8 @@ public class Protocol implements Serializable {
     public int getVersion() { return version; }
     public void setVersion(int version) {this.version = version;}
 
-    public int getFlag() { return flag; }
-    public void setFlag(int flag) { this.flag = flag; }
+    public boolean isP2P() { return mode; }
+    public void setMode(boolean mode) { this.mode = mode; }
 
     public int getNodeId() { return nodeId; }
     public void setNodeId(int nodeId) { this.nodeId = nodeId;}
