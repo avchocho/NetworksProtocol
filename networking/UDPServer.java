@@ -16,7 +16,6 @@ import java.net.SocketException;
 
 public class UDPServer {
     DatagramSocket socket = null;
-
     public UDPServer() {
         // No changes here
     }

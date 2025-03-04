@@ -23,7 +23,6 @@ public class Server {
                 throw new FileNotFoundException("server_config.properties not found in resources!");
             }
 
-            config.load(input);
             serverPort = Integer.parseInt(config.getProperty("server_port", "9876"));
 
             // Initialize server socket
