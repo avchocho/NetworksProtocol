@@ -11,11 +11,10 @@ import java.io.*;
 
 public class Protocol implements Serializable {
     private static final long serialVersionUID = 1L; //first version, long data type 
-    private static final int HEADER_SIZE = 25;
+    //private static final int HEADER_SIZE = 28;
 
     private int version; 
     private int length; //length of payload
-    private int flag;   //status flags for message type (node alive, node dead, file update)
     private int nodeId;
     private long timestamp;
     private int reserve;
@@ -24,7 +23,6 @@ public class Protocol implements Serializable {
     
     public Protocol(int version, int flag, int nodeId, long timestamp, int reserve, String payload) {
         this.version = version; 
-        this.flag = flag;
         this.nodeId = nodeId;
         this.timestamp = timestamp;
         this.reserve = reserve;
@@ -36,8 +34,6 @@ public class Protocol implements Serializable {
     public int getVersion() { return version; }
     public void setVersion(int version) {this.version = version;}
 
-    public int getFlag() { return flag; }
-    public void setFlag(int flag) { this.flag = flag; }
 
     public int getNodeId() { return nodeId; }
     public void setNodeId(int nodeId) { this.nodeId = nodeId;}
@@ -56,9 +52,6 @@ public class Protocol implements Serializable {
 
     public int getLength() { return length; }
 
-    public int getTotalSize() {
-        return HEADER_SIZE + length;
-    }
     
     //serialization - convers an instance of protoocl into a byte array, allows it to be sent over UDP
     public byte[] serialize() throws IOException {
