@@ -1,101 +1,106 @@
 package ClientServer;
-import java.net.*;
+
 import java.io.*;
+import java.net.*;
+import java.util.Properties;
 import java.util.Random;
+import java.util.concurrent.*;
+import ClientServer.Protocol;
 
 public class TestClient {
-    private DatagramSocket socket;
-    private InetAddress serverAddress;
+    private String serverIP;
     private int serverPort;
     private int nodeId;
-    private Random random;
+    private DatagramSocket socket;
+    private ExecutorService executorService;
 
     public TestClient(int nodeId) {
         try {
-            this.serverPort = 5000; // Server port
-            this.serverAddress = InetAddress.getByName("127.0.0.1"); // Localhost
-            this.socket = new DatagramSocket();
-            this.nodeId = nodeId;
-            this.random = new Random();
+            System.out.println("Client " + nodeId + " is starting...");
 
-            System.out.println("CLIENT " + nodeId + " started.");
+            // Load config
+            Properties config = new Properties();
+            InputStream input = getClass().getClassLoader().getResourceAsStream("ClientServer/client_config.properties");
+
+            if (input == null) {
+                throw new FileNotFoundException("client_config.properties not found!");
+            }
+            config.load(input);
+
+            // Read server IP & Port from config
+            serverIP = config.getProperty("server_ip", "127.0.0.1");
+            serverPort = Integer.parseInt(config.getProperty("server_port", "5000"));
+
+            // Initialize socket
+            socket = new DatagramSocket();
+            this.nodeId = nodeId;
+
+            executorService = Executors.newCachedThreadPool();
+
+            System.out.println("Client " + nodeId + " is running, connecting to " + serverIP + ":" + serverPort);
+
+            // Start sender and receiver threads
+            executorService.execute(this::sendUpdates);
+            executorService.execute(this::listenForServer);
+
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    public void startClient() {
-        new Thread(() -> {
-            while (true) {
-                try {
-                    int waitTime = random.nextInt(31); // Random wait time (0-30s)
-                    Thread.sleep(waitTime * 1000);
-
-                    sendHeartbeat();
-                    sendFileUpdate();
-
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-            }
-        }).start();
-    }
-
-    public void sendHeartbeat() {
-        try {
-            Protocol heartbeat = new Protocol(1, 1, nodeId, System.currentTimeMillis(), 0, ""); 
-            byte[] data = heartbeat.serialize();
-            DatagramPacket packet = new DatagramPacket(data, data.length, serverAddress, serverPort);
-            socket.send(packet);
-            System.out.println("CLIENT " + nodeId + ": Sent heartbeat.");
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    public void sendFileUpdate() {
-        try {
-            String fakeFileList = "file1.txt, file2.txt, file3.txt";
-            Protocol fileUpdate = new Protocol(1, 2, nodeId, System.currentTimeMillis(), 0, fakeFileList);
-            byte[] data = fileUpdate.serialize();
-            DatagramPacket packet = new DatagramPacket(data, data.length, serverAddress, serverPort);
-            socket.send(packet);
-            System.out.println("CLIENT " + nodeId + ": Sent file listing update.");
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    public void receiveUpdates() {
-        new Thread(() -> {
+    /**
+     * Sends periodic heartbeat messages to the server.
+     */
+    private void sendUpdates() {
+        Random random = new Random();
+        while (true) {
             try {
-                byte[] buffer = new byte[1024];
-                DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
-    
-                while (true) {
-                    System.out.println("CLIENT " + nodeId + ": Waiting for availability update...");
-                    
-                    socket.receive(packet); // Blocking call
-                    System.out.println("CLIENT " + nodeId + ": Packet received!");
-    
-                    Protocol updateMessage = Protocol.deserialize(packet.getData());
-    
-                    System.out.println("CLIENT " + nodeId + ": Deserialized update - Flag: " + updateMessage.getFlag());
-    
-                    if (updateMessage.getFlag() == 4) { // Availability update
-                        System.out.println("CLIENT " + nodeId + ": Received availability update:\n" + updateMessage.getPayload());
-                    }
-                }
-            } catch (IOException | ClassNotFoundException e) {
+                int delay = random.nextInt(30000); // Random delay (0-30s)
+                Thread.sleep(delay);
+
+                Protocol heartbeat = new Protocol(1, false, nodeId, System.currentTimeMillis(), 0, "Hello from node " + nodeId);
+                byte[] data = heartbeat.serialize();
+
+                DatagramPacket packet = new DatagramPacket(data, data.length, InetAddress.getByName(serverIP), serverPort);
+                socket.send(packet);
+
+                System.out.println("Client " + nodeId + " sent heartbeat to server.");
+            } catch (IOException | InterruptedException e) {
                 e.printStackTrace();
             }
-        }).start();
+        }
+    }
+
+    /**
+     * Listens for responses from the server.
+     */
+    private void listenForServer() {
+        try {
+            byte[] buffer = new byte[1024];
+            while (true) {
+                DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+                socket.receive(packet);
+
+                Protocol receivedProtocol = Protocol.deserialize(packet.getData());
+
+                System.out.println("Client " + nodeId + " received update from server: " + receivedProtocol.getPayload());
+            }
+        } catch (IOException | ClassNotFoundException e) {
+            e.printStackTrace();
+        }
     }
 
     public static void main(String[] args) {
-        TestClient client = new TestClient(1001);
+        int nodeId = 1; // Default node ID
+        if (args.length >= 1) {
+            try {
+                nodeId = Integer.parseInt(args[0]); // Read from command-line if provided
+            } catch (NumberFormatException e) {
+                System.out.println("Invalid nodeId, using default ID: " + nodeId);
+            }
+        }
+        new TestClient(nodeId);
+        //new TestClient(2);
 
-        client.receiveUpdates(); // Start listening for availability updates
-        client.startClient(); // Start sending updates at random intervals
     }
 }

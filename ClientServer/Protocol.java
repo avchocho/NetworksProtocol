@@ -11,17 +11,17 @@ import java.io.*;
 
 public class Protocol implements Serializable {
     private static final long serialVersionUID = 1L; //first version, long data type 
-    private static final int HEADER_SIZE = 30;
+    private static final int HEADER_SIZE = Integer.BYTES * 4 + Long.BYTES + 1;
 
     private int version; 
     private int length; //length of payload
-    private int nodeId;
+    private String nodeId;
     private boolean mode; //true = P2P, false = client-server
     private long timestamp;
     private int reserve;
     private String payload;
     
-    public Protocol(int version, boolean mode, int nodeId, long timestamp, int reserve, String payload) {
+    public Protocol(int version, boolean mode, String nodeId, long timestamp, int reserve, String payload) {
         this.version = version; 
         this.mode = mode;
         this.nodeId = nodeId;
@@ -38,8 +38,8 @@ public class Protocol implements Serializable {
     public boolean isP2P() { return mode; }
     public void setMode(boolean mode) { this.mode = mode; }
 
-    public int getNodeId() { return nodeId; }
-    public void setNodeId(int nodeId) { this.nodeId = nodeId;}
+    public String getNodeId() { return nodeId; }
+    public void setNodeId(String nodeId) { this.nodeId = nodeId;}
 
     public long getTimestamp() { return timestamp; }
     public void setTimestamp(long timestamp) {this.timestamp = timestamp;}
@@ -58,6 +58,7 @@ public class Protocol implements Serializable {
     public int getTotalSize() {
         return HEADER_SIZE + length;
     }
+    
     
     //serialization - convers an instance of protoocl into a byte array, allows it to be sent over UDP
     public byte[] serialize() throws IOException {
