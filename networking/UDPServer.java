@@ -4,8 +4,6 @@ package networking;
 * 
 * @author cjaiswal
 *
-*  
-* 
 */
 
 import java.io.IOException;
