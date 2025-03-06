@@ -4,7 +4,6 @@ import java.io.*;
 import java.net.*;
 import java.util.*;
 import java.util.concurrent.*;
-import ClientServer.Protocol;
 
 public class Client1 {
     private String serverIP;

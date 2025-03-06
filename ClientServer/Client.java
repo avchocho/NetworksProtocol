@@ -4,7 +4,6 @@ import java.io.*;
 import java.net.*;
 import java.util.*;
 import java.util.concurrent.*;
-import ClientServer.Protocol;
 
 public class Client {
     private String serverIP;
@@ -33,7 +32,7 @@ public class Client {
             // Read server and client details
             serverIP = config.getProperty("server_ip", "127.0.0.1");
             serverPort = Integer.parseInt(config.getProperty("server_port", "5000"));
-            clientIP = config.getProperty("client_ip", "127.0.0.1"); // Now used as nodeId
+            clientIP = config.getProperty("client_ip", "127.0.0.1"); 
             clientPort = Integer.parseInt(config.getProperty("client_port", "6000"));
             homeDirectory = config.getProperty("home_directory", "./home/");
 
@@ -41,9 +40,10 @@ public class Client {
             socket = new DatagramSocket(clientPort, InetAddress.getByName(clientIP));
             executorService = Executors.newCachedThreadPool();
 
-            System.out.println("Client " + clientIP + " running at " + clientIP + ":" + clientPort + " -> Server " + serverIP + ":" + serverPort);
+            System.out.println("Client " + clientIP + " running at " + clientIP + ":" + clientPort + 
+                    " -> Server " + serverIP + ":" + serverPort);
 
-            // Start three independent threads
+            // Start independent threads
             executorService.execute(this::sendHeartbeat);
             executorService.execute(this::listenForUpdates);
             executorService.execute(this::printUpdates);
@@ -53,14 +53,11 @@ public class Client {
         }
     }
 
-    /**
-     * Thread 1: Sends periodic heartbeat messages with file listings.
-     */
     private void sendHeartbeat() {
         Random random = new Random();
         while (true) {
             try {
-                int delay = random.nextInt(30000); // Random delay (0-30s)
+                int delay = random.nextInt(30000);
                 Thread.sleep(delay);
 
                 String fileListing = getFileListing();
@@ -78,9 +75,6 @@ public class Client {
         }
     }
 
-    /**
-     * Thread 2: Listens for updates from the server.
-     */
     private void listenForUpdates() {
         try {
             byte[] buffer = new byte[1024];
@@ -89,21 +83,17 @@ public class Client {
                 socket.receive(packet);
 
                 Protocol receivedProtocol = Protocol.deserialize(packet.getData());
-                lastServerUpdate = receivedProtocol.getPayload(); // Store received update for printing
-
+                lastServerUpdate = receivedProtocol.getPayload();
             }
         } catch (IOException | ClassNotFoundException e) {
             e.printStackTrace();
         }
     }
 
-    /**
-     * Thread 3: Prints the latest server update every 30 seconds.
-     */
     private void printUpdates() {
         while (true) {
             try {
-                Thread.sleep(30000); // Print every 30 seconds
+                Thread.sleep(30000);
                 System.out.println("\n🔹 [Client " + clientIP + "] Received Update from Server 🔹");
                 System.out.println("--------------------------------------------------");
                 System.out.println(lastServerUpdate);
@@ -114,24 +104,17 @@ public class Client {
         }
     }
 
-    /**
-     * Retrieves a file listing from the home directory.
-     */
     private String getFileListing() {
         File folder = new File(homeDirectory);
-        
-        // If the directory doesn't exist, create it
         if (!folder.exists()) {
             System.out.println("📂 Home directory not found. Creating: " + homeDirectory);
-            boolean created = folder.mkdirs();
-            if (created) {
+            if (folder.mkdirs()) {
                 System.out.println("✅ Home directory created successfully!");
             } else {
                 return "ERROR: Could not create home directory!";
             }
         }
-    
-        // List files in the directory
+
         StringBuilder fileList = new StringBuilder();
         File[] files = folder.listFiles();
         if (files != null) {
@@ -141,7 +124,8 @@ public class Client {
         }
         return fileList.length() > 0 ? fileList.toString() : "No files available.";
     }
+
     public static void main(String[] args) {
-        new Client(); // No need to pass nodeId manually
+        new Client();
     }
 }

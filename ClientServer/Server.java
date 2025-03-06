@@ -12,24 +12,25 @@ public class Server {
     private ConcurrentHashMap<String, Protocol> clientData;
     private ConcurrentHashMap<String, InetSocketAddress> clientAddresses;
     private ExecutorService executorService;
-    private static final int TIMEOUT = 30000; // 30 seconds before assuming a client is dead
+    private static final int TIMEOUT = 30000;
     private static final int BUFFER_SIZE = 1024;
 
-    public Server(String nodeId) {
+    public Server() {
         try {
-            System.out.println("Server is starting...");
+            System.out.println("🔹 Server is starting...");
 
-            // Load configuration using ConfigReader
-            ConfigReader config = new ConfigReader(nodeId);
+            // Load configuration
+            Properties config = new Properties();
+            InputStream input = getClass().getClassLoader().getResourceAsStream("ClientServer/server_config.properties");
 
-            if (!config.isServer()) {
-                System.err.println("⚠️ ERROR: This node is not configured as a server!");
-                return;
+            if (input == null) {
+                throw new FileNotFoundException("server_config.properties not found in resources!");
             }
+            config.load(input);
 
-            // Assign configuration values
-            serverIP = config.getIP();
-            serverPort = config.getPort();
+            // Read IP and Port from config
+            serverIP = config.getProperty("server_ip", "127.0.0.1");
+            serverPort = Integer.parseInt(config.getProperty("server_port", "5000"));
 
             // Bind server to specific IP and Port
             socket = new DatagramSocket(serverPort, InetAddress.getByName(serverIP));
@@ -38,7 +39,7 @@ public class Server {
             clientAddresses = new ConcurrentHashMap<>();
             executorService = Executors.newCachedThreadPool();
 
-            System.out.println("Server is listening on " + serverIP + ":" + serverPort + "...");
+            System.out.println("✅ Server is listening on " + serverIP + ":" + serverPort + "...");
 
             // Start server threads
             executorService.execute(this::listenForClients);
@@ -125,10 +126,6 @@ public class Server {
     }
 
     public static void main(String[] args) {
-        if (args.length < 1) {
-            System.err.println("Usage: java Server <nodeId>");
-            return;
-        }
-        new Server(args[0]);
+        new Server();
     }
 }

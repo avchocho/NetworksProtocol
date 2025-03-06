@@ -1,0 +1,7 @@
+# NodeID, Role, IP, Port, Home Directory (only for clients)
+1, server, 192.168.1.10, 5000, /home/server
+2, client, 192.168.1.11, 6001, /home/node1
+3, client, 192.168.1.12, 6002, /home/node2
+4, client, 192.168.1.13, 6003, /home/node3
+5, client, 192.168.1.14, 6004, /home/node4
+6, client, 192.168.1.15, 6005, /home/node5

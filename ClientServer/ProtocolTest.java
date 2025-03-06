@@ -6,7 +6,7 @@ public class ProtocolTest {
     public static void main(String[] args) {
         try {
             // Create a Protocol object
-            Protocol original = new Protocol(1, false, 1001, System.currentTimeMillis(), 0, "Hello, HAC!");
+            Protocol original = new Protocol(1, false, "1001", System.currentTimeMillis(), 0, "Hello, HAC!");
 
             // Serialize the object
             byte[] serializedData = original.serialize();

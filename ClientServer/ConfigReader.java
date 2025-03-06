@@ -9,32 +9,43 @@ public class ConfigReader {
     private int port;
     private String homeDir;
 
+    private static final String CONFIG_FILE = "client_server_config.txt"; 
+
     public ConfigReader(String nodeId) throws IOException {
         this.nodeId = nodeId;
         loadConfig();
     }
 
     private void loadConfig() throws IOException {
-        BufferedReader reader = new BufferedReader(new FileReader("client_server_config.txt"));
-        String line;
-        
-        while ((line = reader.readLine()) != null) {
-            if (line.startsWith("#") || line.trim().isEmpty()) continue; // Skip comments and empty lines
-            String[] parts = line.split(", ");
-            
-            if (parts[0].equals(nodeId)) {
-                role = parts[1];
-                ip = parts[2];
-                port = Integer.parseInt(parts[3]);
-                homeDir = parts[4];
-                break;
+        try (BufferedReader reader = new BufferedReader(new FileReader(CONFIG_FILE))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (line.startsWith("#") || line.trim().isEmpty()) continue; // Skip comments and empty lines
+                String[] parts = line.split(",\\s*"); // Split by comma and optional spaces
+                
+                if (parts.length < 4) {
+                    System.err.println("⚠️ ERROR: Invalid config format in line: " + line);
+                    continue;
+                }
+
+                // Check if this line matches the node ID
+                if (parts[0].equals(nodeId)) {
+                    role = parts[1].toLowerCase(); // Convert to lowercase
+                    ip = parts[2];
+                    port = Integer.parseInt(parts[3]);
+                    
+                    if (isClient() && parts.length >= 5) {
+                        homeDir = parts[4];
+                    } else {
+                        homeDir = null; // Home directory is only needed for clients
+                    }
+                    break;
+                }
             }
         }
-        
-        reader.close();
 
-        if (role == null || ip == null || homeDir == null) {
-            throw new FileNotFoundException("Node ID " + nodeId + " not found in config file.");
+        if (role == null || ip == null) {
+            throw new FileNotFoundException("⚠️ ERROR: Node ID " + nodeId + " not found in config file.");
         }
     }
 
@@ -48,20 +59,20 @@ public class ConfigReader {
 
     @Override
     public String toString() {
-        return "Node " + nodeId + " [" + role.toUpperCase() + "] - IP: " + ip + ", Port: " + port + ", Home: " + homeDir;
+        return "Node " + nodeId + " [" + role.toUpperCase() + "] - IP: " + ip + ", Port: " + port +
+               (isClient() ? ", Home: " + homeDir : "");
     }
 
     public static void main(String[] args) {
         try {
-            // Example: Read config for node 2 (change this for different nodes)
-            ConfigReader config = new ConfigReader("2");
+            // Test reading configurations for a specific node
+            ConfigReader config = new ConfigReader("1"); // Change node ID for testing
             System.out.println(config);
 
-            // Example Usage
             if (config.isServer()) {
-                System.out.println("This node is the SERVER.");
+                System.out.println("✅ This node is a SERVER.");
             } else {
-                System.out.println("This node is a CLIENT.");
+                System.out.println("✅ This node is a CLIENT.");
             }
         } catch (IOException e) {
             e.printStackTrace();
