@@ -4,38 +4,35 @@ import java.io.*;
 import java.net.*;
 import java.util.*;
 import java.util.concurrent.*;
-import ClientServer.Protocol;
 
 public class Server {
     private String serverIP;
     private int serverPort;
     private DatagramSocket socket;
-    private ConcurrentHashMap<String, Protocol> clientData; // Stores latest updates from clients
-    private ConcurrentHashMap<String, InetSocketAddress> clientAddresses; // Stores client IPs & Ports
+    private ConcurrentHashMap<String, Protocol> clientData;
+    private ConcurrentHashMap<String, InetSocketAddress> clientAddresses;
     private ExecutorService executorService;
     private static final int TIMEOUT = 30000; // 30 seconds before assuming a client is dead
     private static final int BUFFER_SIZE = 1024;
 
-    public Server() {
+    public Server(String nodeId) {
         try {
             System.out.println("Server is starting...");
 
-            // Load configuration
-            Properties config = new Properties();
-            InputStream input = getClass().getClassLoader().getResourceAsStream("ClientServer/server_config.properties");
+            // Load configuration using ConfigReader
+            ConfigReader config = new ConfigReader(nodeId);
 
-            if (input == null) {
-                throw new FileNotFoundException("server_config.properties not found in resources!");
+            if (!config.isServer()) {
+                System.err.println("⚠️ ERROR: This node is not configured as a server!");
+                return;
             }
-            config.load(input);
 
-            // Read IP and Port from config
-            serverIP = config.getProperty("server_ip", "127.0.0.1");
-            serverPort = Integer.parseInt(config.getProperty("server_port", "5000"));
+            // Assign configuration values
+            serverIP = config.getIP();
+            serverPort = config.getPort();
 
             // Bind server to specific IP and Port
-            InetAddress serverAddress = InetAddress.getByName(serverIP);
-            socket = new DatagramSocket(serverPort, serverAddress);
+            socket = new DatagramSocket(serverPort, InetAddress.getByName(serverIP));
 
             clientData = new ConcurrentHashMap<>();
             clientAddresses = new ConcurrentHashMap<>();
@@ -52,9 +49,6 @@ public class Server {
         }
     }
 
-    /**
-     * Listens for incoming messages from clients.
-     */
     private void listenForClients() {
         try {
             while (true) {
@@ -62,18 +56,12 @@ public class Server {
                 DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
                 socket.receive(packet);
 
-                // Extract client IP
                 InetAddress clientIP = packet.getAddress();
                 int clientPort = packet.getPort();
-                String nodeId = clientIP.getHostAddress(); // Use actual IP as nodeId
+                String nodeId = clientIP.getHostAddress();
 
-                // Deserialize the received data
                 Protocol receivedMessage = Protocol.deserialize(packet.getData());
-
-                // Store client's latest data
                 clientData.put(nodeId, receivedMessage);
-
-                // Store client's IP and port
                 clientAddresses.put(nodeId, new InetSocketAddress(clientIP, clientPort));
 
                 System.out.println("Received heartbeat from node (" + nodeId + ")");
@@ -83,13 +71,10 @@ public class Server {
         }
     }
 
-    /**
-     * Monitors clients and removes inactive ones.
-     */
     private void monitorClients() {
         while (true) {
             try {
-                Thread.sleep(30000); // Check every 30 seconds
+                Thread.sleep(30000);
                 long currentTime = System.currentTimeMillis();
 
                 Iterator<Map.Entry<String, Protocol>> iterator = clientData.entrySet().iterator();
@@ -98,10 +83,10 @@ public class Server {
                     String nodeId = entry.getKey();
                     long lastUpdate = entry.getValue().getTimestamp();
 
-                    if (currentTime - lastUpdate > TIMEOUT) { // Mark as dead if silent for 30s
+                    if (currentTime - lastUpdate > TIMEOUT) {
                         System.out.println("Node " + nodeId + " is inactive.");
-                        iterator.remove(); // Removes from clientData
-                        clientAddresses.remove(nodeId); // Removes from clientAddresses
+                        iterator.remove();
+                        clientAddresses.remove(nodeId);
                     }
                 }
             } catch (InterruptedException e) {
@@ -110,36 +95,26 @@ public class Server {
         }
     }
 
-    /**
-     * Broadcasts a single packet containing all active clients' data.
-     */
     private void broadcastUpdates() {
         while (true) {
             try {
-                Thread.sleep(30000); // Send updates every 30 seconds
+                Thread.sleep(30000);
 
                 if (clientData.isEmpty()) {
                     System.out.println("No active clients to broadcast updates.");
                     continue;
                 }
 
-                // Build a single message containing all client updates
                 StringBuilder combinedPayload = new StringBuilder();
                 for (Map.Entry<String, Protocol> entry : clientData.entrySet()) {
-                    combinedPayload.append(entry.getKey()) // Node's IP address
-                                   .append("::")
-                                   .append(entry.getValue().getPayload())
-                                   .append("\n");
+                    combinedPayload.append(entry.getKey()).append("::").append(entry.getValue().getPayload()).append("\n");
                 }
 
-                // Create one Protocol object containing all updates
                 Protocol combinedUpdate = new Protocol(1, false, "server", System.currentTimeMillis(), 0, combinedPayload.toString());
                 byte[] data = combinedUpdate.serialize();
 
-                // Send ONE packet to each client
                 for (InetSocketAddress clientAddress : clientAddresses.values()) {
-                    DatagramPacket packet = new DatagramPacket(data, data.length,
-                            clientAddress.getAddress(), clientAddress.getPort());
+                    DatagramPacket packet = new DatagramPacket(data, data.length, clientAddress.getAddress(), clientAddress.getPort());
                     socket.send(packet);
                 }
                 System.out.println("Broadcasted one packet containing all client updates.");
@@ -150,6 +125,10 @@ public class Server {
     }
 
     public static void main(String[] args) {
-        new Server();
+        if (args.length < 1) {
+            System.err.println("Usage: java Server <nodeId>");
+            return;
+        }
+        new Server(args[0]);
     }
 }
